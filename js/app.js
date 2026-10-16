@@ -23,6 +23,7 @@
   const playPauseBtn = document.getElementById('play-pause-btn');
   const pauseIcon = document.getElementById('pause-icon');
   const playIcon = document.getElementById('play-icon');
+  const skipAnimationBtn = document.getElementById('skip-animation-btn');
   const instantFinishBtn = document.getElementById('instant-finish-btn');
   const replayBtn = document.getElementById('replay-btn');
   const downloadBtn = document.getElementById('download-btn');
@@ -280,12 +281,46 @@
     }
   });
 
+  if (skipAnimationBtn) {
+    skipAnimationBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.sourceImage || state.isFinished) return;
+      finishPaintingInstantly();
+    });
+  }
+
   instantFinishBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!state.sourceImage || state.isFinished) return;
-    finishPaintingInstantly();
+    returnToInitialMenu();
   });
+
+  function returnToInitialMenu() {
+    if (state.animationFrameId) {
+      cancelAnimationFrame(state.animationFrameId);
+      state.animationFrameId = null;
+    }
+    state.isPlaying = false;
+    state.isFinished = false;
+    state.sourceImage = null;
+    state.strokeIndex = 0;
+    state.totalStrokesRendered = 0;
+
+    try {
+      sessionStorage.removeItem(SESSION_IMG_KEY);
+    } catch (_) {
+      // Ignora erro de sessão
+    }
+
+    setComparisonMode(false);
+    closeExportModal();
+    canvasStage.classList.add('hidden');
+    dropzone.classList.remove('hidden');
+    downloadBtn.disabled = true;
+    applyReconstructBtn.disabled = true;
+    fileInput.value = '';
+  }
 
   replayBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -584,7 +619,9 @@
   }
 
   function updatePlaybackUI() {
-    instantFinishBtn.disabled = state.isFinished;
+    if (skipAnimationBtn) {
+      skipAnimationBtn.disabled = state.isFinished;
+    }
     if (state.isPlaying && !state.isFinished) {
       pauseIcon.classList.remove('hidden');
       playIcon.classList.add('hidden');
