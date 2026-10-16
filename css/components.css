@@ -560,6 +560,211 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
+/* Export Layout Modal */
+.export-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 8, 7, 0.84);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.export-modal-card {
+  width: 100%;
+  max-width: 980px;
+  max-height: 92vh;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.export-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.export-modal-header h2 {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+.export-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) 340px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.export-preview-area {
+  background:
+    radial-gradient(circle at center, rgba(224, 173, 94, 0.08) 0%, rgba(16, 14, 12, 0.95) 75%);
+  padding: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+}
+
+#export-preview-canvas {
+  max-width: 100%;
+  max-height: 64vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.85);
+  border-radius: 3px;
+}
+
+.export-options-panel {
+  padding: 1.35rem;
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  background: var(--bg-surface);
+}
+
+.export-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.export-group-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.frame-style-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+}
+
+.frame-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.frame-option-btn:hover {
+  border-color: var(--border-highlight);
+  background: var(--bg-card);
+}
+
+.frame-option-btn.active {
+  border-color: var(--accent-gold);
+  background: rgba(224, 173, 94, 0.16);
+  color: var(--accent-gold);
+  font-weight: 600;
+}
+
+.frame-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 235, 190, 0.45);
+}
+
+.swatch-frame-mahogany {
+  background: linear-gradient(135deg, #593e25, #2d1e10);
+}
+
+.swatch-frame-gold {
+  background: linear-gradient(135deg, #f7dd97, #9e7324);
+}
+
+.swatch-frame-ebony {
+  background: linear-gradient(135deg, #32302e, #0d0c0c);
+}
+
+.swatch-frame-none {
+  background: repeating-conic-gradient(#332d27 0% 25%, #1e1a17 0% 50%) 50% / 10px 10px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent-gold);
+  cursor: pointer;
+}
+
+.text-input {
+  width: 100%;
+  padding: 0.62rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.text-input:focus {
+  border-color: var(--accent-gold);
+}
+
+.export-modal-actions {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 860px) {
+  .export-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .export-options-panel {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  #export-preview-canvas {
+    max-height: 42vh;
+  }
+}
+
 @media (max-width: 640px) {
   .btn span {
     font-size: 0.8rem;

@@ -3,7 +3,7 @@
  */
 
 (function () {
-  const { STYLE_PRESETS, generateSampleScene, OilEngine } = window.AtelierOleo;
+  const { STYLE_PRESETS, generateSampleScene, OilEngine, FrameExporter } = window.AtelierOleo;
   const SESSION_IMG_KEY = 'atelier_oleo_current_image';
 
   // Elementos da DOM
@@ -27,6 +27,16 @@
   const replayBtn = document.getElementById('replay-btn');
   const downloadBtn = document.getElementById('download-btn');
   const applyReconstructBtn = document.getElementById('apply-reconstruct-btn');
+
+  // Modal de Exportação com Moldura
+  const exportModal = document.getElementById('export-modal');
+  const closeExportModalBtn = document.getElementById('close-export-modal-btn');
+  const exportPreviewCanvas = document.getElementById('export-preview-canvas');
+  const frameOptionBtns = document.querySelectorAll('.frame-option-btn');
+  const exportPassepartoutInput = document.getElementById('export-passepartout');
+  const exportTitleInput = document.getElementById('export-title-input');
+  const exportAuthorInput = document.getElementById('export-author-input');
+  const confirmDownloadBtn = document.getElementById('confirm-download-btn');
 
   // Visualização e Comparador Antes/Depois
   const artworkFrame = document.getElementById('artwork-frame');
@@ -65,7 +75,8 @@
 
   const state = {
     sourceImage: null,
-    activePreset: 'vangogh',
+    activePreset: 'atelier',
+    selectedExportFrame: 'museum_gold',
     isPlaying: false,
     isFinished: false,
     isComparing: false,
@@ -286,9 +297,80 @@
   downloadBtn.addEventListener('click', (e) => {
     e.preventDefault();
     if (!state.sourceImage) return;
+    // Se a pintura ainda estiver em andamento, finaliza para exportar com máxima nitidez
+    if (!state.isFinished) {
+      finishPaintingInstantly();
+    }
+    openExportModal();
+  });
+
+  function getExportOptions() {
+    return {
+      frameStyle: state.selectedExportFrame,
+      passepartout: exportPassepartoutInput.checked,
+      title: exportTitleInput.value,
+      author: exportAuthorInput.value
+    };
+  }
+
+  function updateExportPreview() {
+    if (!state.sourceImage) return;
+    const framedCanvas = FrameExporter.renderFramedArtwork(paintCanvas, getExportOptions());
+    exportPreviewCanvas.width = framedCanvas.width;
+    exportPreviewCanvas.height = framedCanvas.height;
+    const previewCtx = exportPreviewCanvas.getContext('2d');
+    previewCtx.drawImage(framedCanvas, 0, 0);
+  }
+
+  function openExportModal() {
+    exportModal.classList.remove('hidden');
+    updateExportPreview();
+  }
+
+  function closeExportModal() {
+    exportModal.classList.add('hidden');
+  }
+
+  closeExportModalBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeExportModal();
+  });
+
+  exportModal.addEventListener('click', (e) => {
+    if (e.target === exportModal) {
+      closeExportModal();
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !exportModal.classList.contains('hidden')) {
+      closeExportModal();
+    }
+  });
+
+  frameOptionBtns.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      frameOptionBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.selectedExportFrame = btn.dataset.frame;
+      exportPassepartoutInput.disabled = state.selectedExportFrame === 'none';
+      exportTitleInput.disabled = state.selectedExportFrame === 'none';
+      updateExportPreview();
+    });
+  });
+
+  exportPassepartoutInput.addEventListener('change', updateExportPreview);
+  exportTitleInput.addEventListener('input', updateExportPreview);
+  exportAuthorInput.addEventListener('input', updateExportPreview);
+
+  confirmDownloadBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!state.sourceImage) return;
+    updateExportPreview();
     const link = document.createElement('a');
-    link.download = `atelier-oleo-${state.activePreset}-${Date.now()}.png`;
-    link.href = paintCanvas.toDataURL('image/png');
+    link.download = `atelier-oleo-quadro-${state.activePreset}-${Date.now()}.png`;
+    link.href = exportPreviewCanvas.toDataURL('image/png');
     link.click();
   });
 
