@@ -70,23 +70,38 @@ window.AtelierOleo = window.AtelierOleo || {};
       const h = this.height;
 
       const origData = this.origCtx.getImageData(0, 0, w, h).data;
+      const isDisney = Boolean(preset && preset.isDisney);
 
-      // 1. Ajuste de pigmento (Vibrância, contraste suave a óleo e Verniz)
-      this.gradedPixels = this.applyOilPigmentGrading(origData, params.colorVibrance, params.warmthShift);
+      // 1. Ajuste de pigmento (Vibrância, contraste suave a óleo ou paleta encantada Disney)
+      this.gradedPixels = this.applyOilPigmentGrading(
+        origData,
+        params.colorVibrance,
+        params.warmthShift,
+        isDisney
+      );
 
       // 2. Campo de Fluxo Tangente + Turbilhão Espiral de Van Gogh
       this.computeFlowField(this.gradedPixels, w, h, params.swirlIntensity);
 
-      // 3. Filtro de agrupamento tonal a óleo de alta nitidez (raio curto + preservação de bordas)
-      const baseRadius = Math.max(1, Math.min(4, Math.round(params.brushSize * 0.42)));
-      this.oilRefPixels = this.computeSharpOilPaintFilter(
-        this.gradedPixels,
-        w,
-        h,
-        baseRadius,
-        28,
-        params.detailLevel / 100
-      );
+      // 3. Filtro de referência: Efeito Disney Experimental (Bilateral + Cel-Shading + Contorno) ou Óleo Nítido
+      if (isDisney) {
+        this.oilRefPixels = this.computeDisneyIllustrationFilter(
+          this.gradedPixels,
+          w,
+          h,
+          params.detailLevel / 100
+        );
+      } else {
+        const baseRadius = Math.max(1, Math.min(4, Math.round(params.brushSize * 0.42)));
+        this.oilRefPixels = this.computeSharpOilPaintFilter(
+          this.gradedPixels,
+          w,
+          h,
+          baseRadius,
+          28,
+          params.detailLevel / 100
+        );
+      }
 
       // 4. Prepara a tela de linho com Imprimatura
       this.preparePrimedCanvas(w, h, params);
@@ -96,9 +111,9 @@ window.AtelierOleo = window.AtelierOleo || {};
     }
 
     /**
-     * Enriquecimento cromático de pigmentos a óleo mantendo fidelidade à foto original
+     * Enriquecimento cromático de pigmentos a óleo ou paleta encantada Disney
      */
-    applyOilPigmentGrading(src, vibrancePct, warmthPct) {
+    applyOilPigmentGrading(src, vibrancePct, warmthPct, isDisney = false) {
       const out = new Uint8ClampedArray(src.length);
       const vibrance = vibrancePct / 100;
       const warmth = warmthPct / 100;
@@ -122,15 +137,128 @@ window.AtelierOleo = window.AtelierOleo || {};
         g = avg + (g - avg) * boost;
         b = avg + (b - avg) * boost;
 
-        r = clampByte(((r / 255 - 0.5) * 1.05 + 0.5) * 255);
-        g = clampByte(((g / 255 - 0.5) * 1.05 + 0.5) * 255);
-        b = clampByte(((b / 255 - 0.5) * 1.05 + 0.5) * 255);
+        if (isDisney) {
+          // Color script encantado Disney: luzes pêssego/douradas suaves e sombras azul-violeta ricas
+          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          const lift = Math.pow(lum, 0.88) * 255 - lum * 255;
+          r = r + lift * 0.65 + lum * 12;
+          g = g + lift * 0.52 + lum * 4;
+          b = b + lift * 0.45 + (1 - lum) * 14;
+        }
+
+        const contrast = isDisney ? 1.09 : 1.05;
+        r = clampByte(((r / 255 - 0.5) * contrast + 0.5) * 255);
+        g = clampByte(((g / 255 - 0.5) * contrast + 0.5) * 255);
+        b = clampByte(((b / 255 - 0.5) * contrast + 0.5) * 255);
 
         out[i] = r;
         out[i + 1] = g;
         out[i + 2] = b;
         out[i + 3] = 255;
       }
+      return out;
+    }
+
+    /**
+     * Modelo Experimental Disney: Suavização Bilateral de Porcelana + Volume Cel-Shading + Traços de Contorno
+     */
+    computeDisneyIllustrationFilter(src, w, h, detailRatio) {
+      const smoothed = new Uint8ClampedArray(src.length);
+      const out = new Uint8ClampedArray(src.length);
+      const radius = 4;
+
+      // 1. Filtro Bilateral preservador de bordas (pele e superfícies aveludadas mantendo olhos e lábios nítidos)
+      for (let y = 0; y < h; y++) {
+        const yMin = Math.max(0, y - radius);
+        const yMax = Math.min(h - 1, y + radius);
+
+        for (let x = 0; x < w; x++) {
+          const xMin = Math.max(0, x - radius);
+          const xMax = Math.min(w - 1, x + radius);
+          const cIdx = (y * w + x) << 2;
+          const cr = src[cIdx];
+          const cg = src[cIdx + 1];
+          const cb = src[cIdx + 2];
+
+          let sumR = 0, sumG = 0, sumB = 0, sumW = 0;
+
+          for (let ny = yMin; ny <= yMax; ny++) {
+            const rOff = ny * w;
+            const dy = ny - y;
+            for (let nx = xMin; nx <= xMax; nx++) {
+              const dx = nx - x;
+              const nIdx = (rOff + nx) << 2;
+              const nr = src[nIdx];
+              const ng = src[nIdx + 1];
+              const nb = src[nIdx + 2];
+
+              const colorDiff = Math.abs(nr - cr) + Math.abs(ng - cg) + Math.abs(nb - cb);
+              if (colorDiff < 62) {
+                const wSpatial = 1 / (1 + (dx * dx + dy * dy) * 0.25);
+                const wColor = 1 - colorDiff / 62;
+                const wgt = wSpatial * wColor * wColor;
+                sumR += nr * wgt;
+                sumG += ng * wgt;
+                sumB += nb * wgt;
+                sumW += wgt;
+              }
+            }
+          }
+
+          if (sumW > 0) {
+            smoothed[cIdx] = (sumR / sumW) | 0;
+            smoothed[cIdx + 1] = (sumG / sumW) | 0;
+            smoothed[cIdx + 2] = (sumB / sumW) | 0;
+          } else {
+            smoothed[cIdx] = cr;
+            smoothed[cIdx + 1] = cg;
+            smoothed[cIdx + 2] = cb;
+          }
+          smoothed[cIdx + 3] = 255;
+        }
+      }
+
+      // 2. Sombreamento Ilustrado (Soft Cel-Shading) + Contorno Artístico Quente + Brilho Mágico
+      for (let p = 0, i = 0; p < w * h; p++, i += 4) {
+        let r = smoothed[i];
+        let g = smoothed[i + 1];
+        let b = smoothed[i + 2];
+
+        // Leve estilização tonal de ilustração nos meios-tons
+        const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        const celLum = (Math.round(lum * 14) / 14) * 0.22 + lum * 0.78;
+        const lumScale = celLum / Math.max(0.02, lum);
+
+        r = clampByte(r * lumScale);
+        g = clampByte(g * lumScale);
+        b = clampByte(b * lumScale);
+
+        // Brilho encantado nas altas luzes (Golden Bloom)
+        if (lum > 0.72) {
+          const glow = (lum - 0.72) * 55;
+          r = clampByte(r + glow * 1.1);
+          g = clampByte(g + glow * 0.95);
+          b = clampByte(b + glow * 0.7);
+        }
+
+        // Traço de contorno ilustrado estilo animação (marrom-ameixa quente nas bordas principais)
+        const edge = this.gradMag[p];
+        if (edge > 0.14) {
+          const inkStrength = Math.min(0.62, (edge - 0.14) * 1.35 * detailRatio);
+          const inkR = r * 0.36 + 18;
+          const inkG = g * 0.26 + 10;
+          const inkB = b * 0.34 + 16;
+          r = Math.round(r * (1 - inkStrength) + inkR * inkStrength);
+          g = Math.round(g * (1 - inkStrength) + inkG * inkStrength);
+          b = Math.round(b * (1 - inkStrength) + inkB * inkStrength);
+        }
+
+        out[i] = r;
+        out[i + 1] = g;
+        out[i + 2] = b;
+        out[i + 3] = 255;
+      }
+
       return out;
     }
 
@@ -445,8 +573,9 @@ window.AtelierOleo = window.AtelierOleo || {};
       const pixelIndex = y0 * w + x0;
       const pIdx = pixelIndex << 2;
 
-      // Camadas 1-2 usam referência a óleo nítida; Camadas 3-4 usam os pixels graduados de alta definição
-      const useOilRef = stroke.passIndex < 2;
+      // No modo Disney usa sempre o buffer ilustrado suave; nos modos a óleo usa pixels graduados nas camadas finas
+      const isDisney = Boolean(preset && preset.isDisney);
+      const useOilRef = isDisney || stroke.passIndex < 2;
       const srcPixels = useOilRef ? this.oilRefPixels : this.gradedPixels;
 
       const jitterScale = stroke.passIndex >= 2 ? 0.35 : 0.8;
@@ -541,8 +670,8 @@ window.AtelierOleo = window.AtelierOleo || {};
       }
       ctx.stroke();
 
-      // 2. Filamentos internos de cerda para textura de pincel
-      if (radius >= 1.8) {
+      // 2. Filamentos internos de cerda para textura de pincel (desativados no modo Disney para manter pele lisa)
+      if (!isDisney && radius >= 1.8) {
         const nx = -prevDy * (radius * 0.34);
         const ny = prevDx * (radius * 0.34);
         const hiDelta = preset.complementaryVibration ? 18 : 12;
@@ -622,18 +751,26 @@ window.AtelierOleo = window.AtelierOleo || {};
       const rawImgData = this.rawPaintCtx.getImageData(0, 0, w, h);
       const rawPixels = rawImgData.data;
 
-      // Acabamento final de alta definição: une a nitidez da foto ao agrupamento a óleo,
-      // mantendo todo o relevo 3D das pinceladas e dos redemoinhos de Van Gogh!
+      // Acabamento final de alta definição: une a nitidez da foto ao agrupamento a óleo ou ilustração Disney
       if (blendFinalOilGlaze && this.oilRefPixels && preset) {
         const detailPct = params.detailLevel / 100;
-        const ratio = Math.min(0.92, preset.oilBlendRatio * (0.75 + detailPct * 0.35));
+        const ratio = Math.min(0.95, preset.oilBlendRatio * (0.75 + detailPct * 0.35));
+        const isDisney = Boolean(preset.isDisney);
 
         for (let i = 0; i < rawPixels.length; i += 4) {
           const pIdx = i >> 2;
-          const edgeFactor = Math.min(1, this.gradMag[pIdx] * 2.8 + detailPct * 0.35);
-          const targetR = this.oilRefPixels[i] * (1 - edgeFactor) + this.gradedPixels[i] * edgeFactor;
-          const targetG = this.oilRefPixels[i + 1] * (1 - edgeFactor) + this.gradedPixels[i + 1] * edgeFactor;
-          const targetB = this.oilRefPixels[i + 2] * (1 - edgeFactor) + this.gradedPixels[i + 2] * edgeFactor;
+          let targetR, targetG, targetB;
+
+          if (isDisney) {
+            targetR = this.oilRefPixels[i];
+            targetG = this.oilRefPixels[i + 1];
+            targetB = this.oilRefPixels[i + 2];
+          } else {
+            const edgeFactor = Math.min(1, this.gradMag[pIdx] * 2.8 + detailPct * 0.35);
+            targetR = this.oilRefPixels[i] * (1 - edgeFactor) + this.gradedPixels[i] * edgeFactor;
+            targetG = this.oilRefPixels[i + 1] * (1 - edgeFactor) + this.gradedPixels[i + 1] * edgeFactor;
+            targetB = this.oilRefPixels[i + 2] * (1 - edgeFactor) + this.gradedPixels[i + 2] * edgeFactor;
+          }
 
           rawPixels[i] = Math.round(rawPixels[i] * (1 - ratio) + targetR * ratio);
           rawPixels[i + 1] = Math.round(rawPixels[i + 1] * (1 - ratio) + targetG * ratio);

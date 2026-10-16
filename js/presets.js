@@ -1,5 +1,5 @@
 /**
- * Atelier Óleo — Configurações dos Modelos de Pintura (Pintura a Óleo & Estilo Van Gogh)
+ * Atelier Óleo — Configurações dos Modelos de Pintura (Óleo, Van Gogh & Experimental Disney)
  */
 
 window.AtelierOleo = window.AtelierOleo || {};
@@ -7,6 +7,7 @@ window.AtelierOleo = window.AtelierOleo || {};
 window.AtelierOleo.STYLE_PRESETS = {
   atelier: {
     name: 'Pintura a Óleo Clássica',
+    isDisney: false,
     brushSize: 4,
     detailLevel: 90,
     strokeCurvature: 75,
@@ -22,6 +23,7 @@ window.AtelierOleo.STYLE_PRESETS = {
   },
   vangogh: {
     name: 'Pintura Estilo Van Gogh',
+    isDisney: false,
     brushSize: 4,
     detailLevel: 88,
     strokeCurvature: 90,
@@ -34,6 +36,22 @@ window.AtelierOleo.STYLE_PRESETS = {
     oilBlendRatio: 0.72,
     contourAccents: true,
     complementaryVibration: true
+  },
+  disney: {
+    name: 'Efeito Disney (Experimental)',
+    isDisney: true,
+    brushSize: 3,
+    detailLevel: 92,
+    strokeCurvature: 85,
+    swirlIntensity: 0,
+    impastoStrength: 15,
+    canvasTexture: 0,
+    colorVibrance: 45,
+    warmthShift: 15,
+    jitter: 2,
+    oilBlendRatio: 0.90,
+    contourAccents: true,
+    complementaryVibration: false
   }
 };
 
