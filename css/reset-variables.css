@@ -33,6 +33,7 @@
 html,
 body {
   min-height: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-obsidian);
   background-image:
     radial-gradient(circle at 18% 12%, rgba(224, 173, 94, 0.08), transparent 40%),
@@ -46,6 +47,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .hidden {

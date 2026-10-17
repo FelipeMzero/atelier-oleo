@@ -48,7 +48,11 @@
   const compareToggleBtn = document.getElementById('compare-toggle-btn');
   const frameToggleBtn = document.getElementById('frame-toggle-btn');
 
-  // Painel Lateral de Controles
+  // Painel Lateral de Controles e Navegação Mobile
+  const controlsPanel = document.getElementById('controls-panel');
+  const headerOptionsBtn = document.getElementById('header-options-btn');
+  const stageOptionsBtn = document.getElementById('stage-options-btn');
+  const scrollToCanvasBtn = document.getElementById('scroll-to-canvas-btn');
   const stylePresetBtns = document.querySelectorAll('.style-card');
   const brushSizeInput = document.getElementById('brush-size');
   const detailLevelInput = document.getElementById('detail-level');
@@ -216,6 +220,45 @@
     updateControlLabels();
   }
 
+  function scrollToControlsPanel() {
+    if (!controlsPanel) return;
+    controlsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    controlsPanel.classList.add('highlight-pulse');
+    setTimeout(() => {
+      controlsPanel.classList.remove('highlight-pulse');
+    }, 900);
+  }
+
+  function scrollToCanvasStage() {
+    const target = !canvasStage.classList.contains('hidden') ? canvasStage : dropzone;
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  if (headerOptionsBtn) {
+    headerOptionsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollToControlsPanel();
+    });
+  }
+
+  if (stageOptionsBtn) {
+    stageOptionsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollToControlsPanel();
+    });
+  }
+
+  if (scrollToCanvasBtn) {
+    scrollToCanvasBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollToCanvasStage();
+    });
+  }
+
   stylePresetBtns.forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -259,6 +302,9 @@
     e.preventDefault();
     if (state.sourceImage) {
       initPaintingProcess();
+      if (window.innerWidth <= 1040) {
+        scrollToCanvasStage();
+      }
     }
   });
 
@@ -438,23 +484,42 @@
 
   let isDraggingSlider = false;
   let isPeekingOriginal = false;
+  let touchStartY = 0;
 
   canvasWrapper.addEventListener('pointerdown', (e) => {
     if (!state.sourceImage) return;
+    touchStartY = e.clientY;
     if (state.isComparing) {
       isDraggingSlider = true;
       handleSliderPointer(e);
+      if (canvasWrapper.setPointerCapture) {
+        try {
+          canvasWrapper.setPointerCapture(e.pointerId);
+        } catch (_) {
+          // Ignora falha de captura em alguns navegadores mobile
+        }
+      }
     } else {
       isPeekingOriginal = true;
       comparisonOverlay.style.clipPath = 'inset(0 0 0 0)';
       comparisonOverlay.classList.remove('hidden');
+      if (e.pointerType === 'mouse' && canvasWrapper.setPointerCapture) {
+        try {
+          canvasWrapper.setPointerCapture(e.pointerId);
+        } catch (_) {
+          // Ignora
+        }
+      }
     }
-    canvasWrapper.setPointerCapture(e.pointerId);
   });
 
   canvasWrapper.addEventListener('pointermove', (e) => {
     if (isDraggingSlider && state.isComparing) {
       handleSliderPointer(e);
+    } else if (isPeekingOriginal && e.pointerType !== 'mouse') {
+      if (Math.abs(e.clientY - touchStartY) > 10) {
+        endPointerInteraction();
+      }
     }
   });
 
@@ -471,6 +536,7 @@
 
   canvasWrapper.addEventListener('pointerup', endPointerInteraction);
   canvasWrapper.addEventListener('pointercancel', endPointerInteraction);
+  canvasWrapper.addEventListener('pointerleave', endPointerInteraction);
 
   function handleSliderPointer(e) {
     const rect = paintCanvas.getBoundingClientRect();
